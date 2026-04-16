@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>Dashboard Guru - GoAbs</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="bg-default">
+    <div class="header" id="headerBg">
+        <div class="container" style="padding:0">
+            <div class="header-top">
+                <div class="logo-small">
+                    <img src="iconapp.png" alt="GoAbs" style="height: 24px; width: auto; vertical-align: middle; margin-right: 8px;">
+                    GoAbs
+                </div>                
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button class="header-minimize-btn" id="headerMinimizeBtn" onclick="toggleHeader()">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                    <button class="profile-nav-btn" id="headerProfileBtn" onclick="switchPage('profile')" title="Profil">
+                        <i class="fas fa-user-circle"></i>
+                    </button>
+                    <button class="logout-btn" onclick="handleLogout()" title="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="greeting" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2>Halo, <span id="guruName">Guru</span></h2>
+                    <p><span id="sekolahName"></span> - <span id="kelasName"></span></p>
+                    <div>
+                        <span class="school-badge" id="packageBadge">Paket: -</span>
+                        <span class="school-badge" id="expiryWarning" style="display:none; background:#ef4444"></span>
+                    </div>
+                </div>
+                <div id="profilePhotoWrapper" onclick="openPhotoUploadModal()" style="cursor: pointer;">
+                    <img id="profilePhoto" class="profile-photo" style="display:none" alt="Foto Profil">
+                    <div id="profilePhotoPlaceholder" class="profile-photo-placeholder">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card"><i class="fas fa-book"></i><div class="stat-value" id="totalMapel">-</div><div class="stat-label">Mata Pelajaran</div></div>
+            <div class="stat-card"><i class="fas fa-users"></i><div class="stat-value" id="totalSiswa">-</div><div class="stat-label">Siswa</div></div>
+            <div class="stat-card"><i class="fas fa-check-circle"></i><div class="stat-value" id="hadirHariIni">-</div><div class="stat-label">Hadir Hari Ini</div></div>
+        </div>
+
+        <div id="pageDashboard" class="page active">
+            <div class="section">
+                <div class="section-title"><span>📊 Ringkasan Hari Ini</span><button class="btn-sm" style="background:#667eea;color:white;padding:6px 12px" onclick="refreshRingkasan()"><i class="fas fa-sync-alt"></i> Refresh</button></div>
+                <div id="ringkasanHariIni"><div class="spinner"></div></div>
+            </div>
+            <div class="section">
+                <div class="section-title">
+                    <span>📱 Scan QR Code Absensi</span>
+                    <span class="hari-ini-badge" id="hariIniBadge"></span>
+                </div>
+                <div id="scanMapelSelect" style="margin-bottom:12px">
+                    <select id="selectedMapelScan" style="width:100%;padding:12px;border-radius:12px;border:1px solid #e2e8f0">
+                        <option value="">Pilih Mata Pelajaran</option>
+                    </select>
+                </div>
+                <button class="btn-add" id="btnOpenScanner" style="width:100%; background:#22c55e; margin-bottom:16px" onclick="startScanner()">
+                    <i class="fas fa-camera"></i> Buka Scanner QR
+                </button>
+            </div>
+            
+            <!-- Scanner Fullscreen Overlay -->
+            <div id="scannerFullscreen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#0f172a; z-index:2000; flex-direction:column; color:white;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:20px 20px 0;">
+                    <div style="background:rgba(255,255,255,0.1); padding:8px 16px; border-radius:40px; font-size:14px; font-weight:500;">
+                        <span id="scanInfoMapel">-</span>
+                    </div>
+                    <button id="btnFlipCamera" style="background:rgba(255,255,255,0.1); border:none; width:44px; height:44px; border-radius:40px; color:white; font-size:20px; cursor:pointer;" onclick="flipCamera()">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px;">
+                    <div style="position:relative; width:280px; height:280px; margin-bottom:24px;">
+                        <div id="qr-reader-fullscreen" style="width:100%; height:100%; border-radius:32px; overflow:hidden; border:3px solid rgba(255,255,255,0.3);"></div>
+                        <div style="position:absolute; top:0; left:0; right:0; bottom:0; pointer-events:none;">
+                            <div style="position:absolute; top:-3px; left:-3px; width:40px; height:40px; border-top:4px solid #22c55e; border-left:4px solid #22c55e; border-radius:12px 0 0 0;"></div>
+                            <div style="position:absolute; top:-3px; right:-3px; width:40px; height:40px; border-top:4px solid #22c55e; border-right:4px solid #22c55e; border-radius:0 12px 0 0;"></div>
+                            <div style="position:absolute; bottom:-3px; left:-3px; width:40px; height:40px; border-bottom:4px solid #22c55e; border-left:4px solid #22c55e; border-radius:0 0 0 12px;"></div>
+                            <div style="position:absolute; bottom:-3px; right:-3px; width:40px; height:40px; border-bottom:4px solid #22c55e; border-right:4px solid #22c55e; border-radius:0 0 12px 0;"></div>
+                        </div>
+                    </div>
+                    <p style="color:#94a3b8; font-size:14px; margin-top:-8px; margin-bottom:20px;">
+                        <i class="fas fa-qrcode"></i> Pastikan QRCode berada di posisi
+                    </p>
+                    <div id="scanResultDisplay" style="background:rgba(255,255,255,0.05); border-radius:20px; padding:16px 24px; width:100%; max-width:320px; text-align:center; border:1px solid rgba(255,255,255,0.1); backdrop-filter:blur(10px);">
+                        <div style="font-size:18px; font-weight:700;" id="displayNama">-</div>
+                        <div style="font-size:14px; color:#cbd5e1;" id="displayNIS">-</div>
+                        <div style="margin-top:10px;">
+                            <span id="displayStatus" style="padding:4px 16px; border-radius:40px; font-size:14px; font-weight:600;">-</span>
+                        </div>
+                        <div style="font-size:12px; color:#94a3b8; margin-top:14px;" id="scanStatusMessage">Siap memindai</div>
+                    </div>
+                </div>
+                <div style="padding:20px 20px 40px;">
+                    <button class="btn-cancel" style="background:#ef4444; color:white; padding:16px; border-radius:20px; font-size:16px; font-weight:700; border:none; width:100%; box-shadow:0 4px 12px rgba(239,68,68,0.3);" onclick="stopScanner()">
+                        <i class="fas fa-times"></i> Akhiri Scan
+                    </button>
+                </div>
+            </div>
+            <div class="section">
+                <div class="section-title"><span>📚 Mata Pelajaran</span><button class="btn-add" onclick="openMapelModal()">+</button></div>
+                <div id="mapelList"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <div id="pageMapel" class="page">
+            <div class="section">
+                <div class="section-title"><span>📚 Mata Pelajaran</span><button class="btn-add" onclick="openMapelModal()">+</button></div>
+                <div id="fullMapelList"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <div id="pageSiswa" class="page">
+            <div class="section">
+                <div class="section-title"><span>👨‍🎓 Daftar Siswa</span><button class="btn-add" onclick="openSiswaModal()">+</button></div>
+                <div style="display:flex; gap:10px; margin-bottom:16px;">
+                    <button class="btn-sm" style="background:#22c55e; color:white; flex:1; padding:10px;" onclick="showQrOptions()"><i class="fas fa-qrcode"></i> QRCode</button>
+                    <button class="btn-sm" style="background:#0088cc; color:white; flex:1; padding:10px;" onclick="openBroadcastModal()">
+                        <i class="fab fa-telegram"></i> Broadcast
+                    </button>
+                    <button class="btn-sm" style="background:#667eea; color:white; flex:1; padding:10px;" onclick="copyFormLink()">
+                        <i class="fas fa-link"></i> Copy Link
+                    </button>
+                </div>
+                <div class="filter-bar">
+                    <input type="text" id="searchSiswa" placeholder="Cari nama atau NIS..." onkeyup="filterSiswa()" style="flex:2">
+                </div>
+                <div id="siswaList"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <div id="pageAbsensi" class="page">
+            <div class="section">
+                <div class="section-title">
+                    <span>📅 Riwayat</span>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-manual" onclick="openManualAbsensiModal()"><i class="fas fa-plus"></i> Manual</button>
+                        <button class="btn-sm" style="background:#667eea; color:white; padding:8px 16px;" onclick="showCetakModal()"><i class="fas fa-print"></i> Cetak</button>
+                    </div>
+                </div>
+                <div class="filter-bar">
+                    <select id="filterMapelAbsensi" onchange="resetRiwayatPageAndLoad()" style="flex:2;">
+                        <option value="">Semua Mapel</option>
+                    </select>
+                    <input type="date" id="filterTanggalAbsensi" onchange="resetRiwayatPageAndLoad()" style="flex:1;">
+                    <div class="filter-arsip-group">
+                        <select id="filterPeriode" onchange="onPeriodeChange()" style="flex:1;">
+                            <option value="aktif">📅 30 Hari Terakhir</option>
+                            <option value="arsip">📦 Data Arsip</option>
+                        </select>
+                        <select id="filterBulan" onchange="loadRiwayatAbsensi()" style="flex:1;">
+                            <option value="">Pilih Bulan</option>
+                        </select>
+                    </div>
+                    <button class="btn-sm" style="background:#ef4444; color:white; padding:10px 16px;" onclick="hapusRiwayatBerdasarkanFilter()">
+                        <i class="fas fa-trash"></i> Hapus
+                    </button>
+                </div>
+                <div id="riwayatAbsensiList"><div class="spinner"></div></div>
+                <div id="paginationControls" style="display: flex; justify-content: center; gap: 16px; margin-top: 20px; align-items: center;">
+                    <button id="prevPageBtn" class="btn-sm" style="background:#667eea; color:white; padding:10px 20px; display:none;"><i class="fas fa-chevron-left"></i> Kembali</button>
+                    <span id="pageInfo" style="font-size:13px; color:#64748b;"></span>
+                    <button id="nextPageBtn" class="btn-sm" style="background:#667eea; color:white; padding:10px 20px;"><i class="fas fa-chevron-right"></i> Lanjut</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="pageLibur" class="page">
+            <div class="section">
+                <div class="section-title">
+                    <span>📅 Kelola Hari Libur</span>
+                    <button class="btn-add" onclick="openTambahLiburModal()">+</button>
+                </div>
+                <p style="font-size:13px; color:#64748b; margin-bottom:16px;">
+                    <i class="fas fa-info-circle"></i> Tambahkan tanggal libur agar sistem tidak melakukan absensi otomatis dan menonaktifkan scanner.
+                </p>
+                <div id="liburList"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <div id="pageProfile" class="page">
+            <div class="section">
+                <div class="profile-card">
+                    <div class="profile-avatar" id="profileAvatar" onclick="openPhotoUploadModal()">
+                        <i class="fas fa-chalkboard-user"></i>
+                    </div>
+                    <div class="profile-name" id="profileName"></div>
+                    <div class="profile-email" id="profileEmail"></div>
+                    
+                    <div style="text-align: center; margin-top: 8px; margin-bottom: 16px;">
+                        <button class="btn-sm" style="background:#667eea; color:white; padding:6px 12px; font-size:11px" onclick="openPhotoUploadModal()">
+                            <i class="fas fa-camera"></i> Ganti Foto
+                        </button>
+                        <button class="btn-sm" style="background:#ef4444; color:white; padding:6px 12px; font-size:11px; margin-left:8px" onclick="deletePhotoConfirm()">
+                            <i class="fas fa-trash"></i> Hapus Foto
+                        </button>
+                    </div>
+                    
+                    <div class="profile-info-grid">
+                        <div class="profile-info-item">
+                            <i class="fas fa-school"></i>
+                            <div class="label">Sekolah</div>
+                            <div class="value" id="profileSekolah"></div>
+                        </div>
+                        <div class="profile-info-item">
+                            <i class="fas fa-chalkboard"></i>
+                            <div class="label">Kelas</div>
+                            <div class="value" id="profileKelas"></div>
+                        </div>
+                        <div class="profile-info-item">
+                            <i class="fab fa-whatsapp"></i>
+                            <div class="label">WhatsApp</div>
+                            <div class="value" id="profileWhatsapp"></div>
+                        </div>
+                        <div class="profile-info-item">
+                            <i class="fas fa-tag"></i>
+                            <div class="label">Paket</div>
+                            <div class="value" id="profilePaket"></div>
+                        </div>
+                        <div class="profile-info-item">
+                            <i class="fas fa-calendar-alt"></i>
+                            <div class="label">Masa Aktif</div>
+                            <div class="value" id="profileMasaAktif"></div>
+                        </div>
+                        <div class="profile-info-item">
+                            <i class="fas fa-clock"></i>
+                            <div class="label">Sisa Hari</div>
+                            <div class="value" id="profileSisaHari"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr style="margin:20px 0">
+
+                <div class="section-title"><span>🔐 Ubah Password</span></div>
+                <div class="form-group"><input type="password" id="oldPassword" placeholder="Password Lama" style="width:100%;padding:12px;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:8px"></div>
+                <div class="form-group"><input type="password" id="newPassword" placeholder="Password Baru (min 6 karakter)" style="width:100%;padding:12px;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:8px"></div>
+                <div class="form-group"><input type="password" id="confirmPassword" placeholder="Konfirmasi Password Baru" style="width:100%;padding:12px;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:8px"></div>
+                <button class="btn-sm" style="background:#667eea; color:white; width:100%; padding:12px; border-radius:16px" onclick="ubahPassword()"><i class="fas fa-key"></i> Ubah Password</button>
+
+                <hr style="margin:20px 0">
+
+                <div class="section-title"><span>💾 Backup & Restore Data</span></div>
+                <p style="font-size:13px; color:#64748b; margin-bottom:16px;">
+                    Simpan cadangan data (mapel, siswa, absensi) atau pulihkan dari file cadangan.
+                </p>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn-sm" style="background:#667eea; color:white; flex:1; padding:12px" onclick="backupData()">
+                        <i class="fas fa-download"></i> Backup
+                    </button>
+                    <button class="btn-sm" style="background:#f59e0b; color:white; flex:1; padding:12px" onclick="document.getElementById('restoreFileInput').click()">
+                        <i class="fas fa-upload"></i> Restore
+                    </button>
+                    <input type="file" id="restoreFileInput" accept=".GoAbs,application/json" style="display:none" onchange="restoreData(this.files[0])">
+                </div>
+                <p style="font-size:11px; color:#94a3b8; margin-top:12px;">
+                    <i class="fas fa-shield-alt"></i> Data disimpan dalam format terenkripsi. Pastikan Anda menyimpan file dengan aman.
+                </p>
+
+                <hr style="margin:20px 0">
+
+                <div class="section-title"><span>🎨 Ganti Background</span></div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px">
+                    <div class="bg-option bg-default" data-bg="default" onclick="changeBackground('default')"></div>
+                    <div class="bg-option bg-gradient1" data-bg="gradient1" onclick="changeBackground('gradient1')"></div>
+                    <div class="bg-option bg-gradient2" data-bg="gradient2" onclick="changeBackground('gradient2')"></div>
+                    <div class="bg-option bg-gradient3" data-bg="gradient3" onclick="changeBackground('gradient3')"></div>
+                    <div class="bg-option bg-blue" data-bg="blue" onclick="changeBackground('blue')"></div>
+                    <div class="bg-option bg-dark" data-bg="dark" onclick="changeBackground('dark')"></div>
+                </div>
+                <div class="bg-upload-section">
+                    <button class="bg-upload-btn" onclick="document.getElementById('bgImageInput').click()"><i class="fas fa-upload"></i> Upload Gambar</button>
+                    <button class="bg-reset-btn" onclick="resetBackground()"><i class="fas fa-undo"></i> Reset ke Default</button>
+                    <input type="file" id="bgImageInput" accept="image/jpeg,image/png,image/jpg" style="display:none" onchange="uploadBackgroundImage(this)">
+                </div>
+
+                <hr style="margin:20px 0">
+
+                <div class="section-title"><span>🎨 Pengaturan Header</span></div>
+                <div class="header-bg-options" id="headerBgOptions">
+                    <div class="header-bg-card default" data-header="default" onclick="changeHeaderBg('default')"></div>
+                    <div class="header-bg-card ocean" data-header="ocean" onclick="changeHeaderBg('ocean')"></div>
+                    <div class="header-bg-card sunset" data-header="sunset" onclick="changeHeaderBg('sunset')"></div>
+                    <div class="header-bg-card forest" data-header="forest" onclick="changeHeaderBg('forest')"></div>
+                    <div class="header-bg-card royal" data-header="royal" onclick="changeHeaderBg('royal')"></div>
+                    <div class="header-bg-card cherry" data-header="cherry" onclick="changeHeaderBg('cherry')"></div>
+                </div>
+                <div class="opacity-slider">
+                    <label style="font-size:13px; font-weight:600; color:#334155">Opacity Header:</label>
+                    <input type="range" id="headerOpacity" min="0.5" max="1" step="0.01" value="1" oninput="updateHeaderOpacity(this.value)">
+                    <div class="opacity-value">Opacity: <span id="opacityValue">100</span>%</div>
+                </div>
+                <button class="btn-sm" style="background:#667eea; color:white; width:100%; padding:12px; border-radius:16px; margin-top:12px" onclick="resetHeaderSettings()"><i class="fas fa-undo"></i> Reset Header ke Default</button>
+
+                <hr style="margin:20px 0">
+
+                <div class="section-title"><span>💰 Perpanjang Paket</span></div>
+                <div id="perpanjangPaketOptions" class="package-buttons"></div>
+
+                <hr style="margin:20px 0">
+
+                <div class="section-title"><span>📞 Hubungi Admin</span></div>
+                <a id="waAdminLink" href="#" class="btn-sm" style="display:block; text-align:center; text-decoration:none; background:#25D366; color:white; width:100%; padding:12px; border-radius:16px"><i class="fab fa-whatsapp"></i> Kirim Pesan ke Admin</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" data-page="dashboard"><i class="fas fa-home"></i><span>Beranda</span></div>
+        <div class="nav-item" data-page="mapel"><i class="fas fa-book"></i><span>Mapel</span></div>
+        <div class="nav-item" data-page="siswa"><i class="fas fa-users"></i><span>Siswa</span></div>
+        <div class="nav-item" data-page="absensi"><i class="fas fa-calendar-check"></i><span>Absensi</span></div>
+        <div class="nav-item" data-page="libur"><i class="fas fa-calendar-times"></i><span>Libur</span></div>
+    </div>
+
+    <!-- Modal Konfirmasi Kustom -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content" style="max-width:320px; text-align:center">
+            <h3 id="confirmTitle">Konfirmasi</h3>
+            <p id="confirmMessage" style="margin:16px 0; color:#334155;"></p>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeConfirmModal(false)">Batal</button>
+                <button class="btn-save" onclick="closeConfirmModal(true)">Ya</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Mapel -->
+    <div id="mapelModal" class="modal"><div class="modal-content"><h3 id="mapelModalTitle">Tambah Mata Pelajaran</h3><input type="hidden" id="mapelId"><div class="form-group"><label>Nama Mata Pelajaran</label><input type="text" id="mapelNama" placeholder="Contoh: Matematika"></div><div class="form-group"><label>Hari</label><select id="mapelHari" style="width:100%;padding:12px;border-radius:12px;border:1px solid #e2e8f0"><option value="">Pilih Hari</option><option value="Senin">Senin</option><option value="Selasa">Selasa</option><option value="Rabu">Rabu</option><option value="Kamis">Kamis</option><option value="Jumat">Jumat</option><option value="Sabtu">Sabtu</option><option value="Minggu">Minggu</option></select></div><div class="form-group"><label>Jam Masuk (HH:MM)</label><input type="time" id="mapelJamMasuk" value="07:00"></div><div class="form-group"><label>Jam Keluar (HH:MM)</label><input type="time" id="mapelJamKeluar" value="08:00"></div><div class="form-group"><label>Toleransi Keterlambatan (menit)</label><input type="number" id="mapelToleransi" value="15"></div><div class="modal-buttons"><button class="btn-cancel" onclick="closeMapelModal()">Batal</button><button class="btn-save" onclick="saveMapel()">Simpan</button></div></div></div>
+
+    <!-- Modal Siswa -->
+    <div id="siswaModal" class="modal">
+        <div class="modal-content">
+            <h3 id="siswaModalTitle">Tambah Siswa</h3>
+            <input type="hidden" id="siswaId">
+            <div class="form-group">
+                <label>NIS</label>
+                <input type="text" id="siswaNis" placeholder="Nomor Induk Siswa">
+            </div>
+            <div class="form-group">
+                <label>Nama Lengkap</label>
+                <input type="text" id="siswaNama" placeholder="Nama Siswa">
+            </div>
+            <div class="form-group">
+                <label>Chat ID Telegram (dari @userinfobot)</label>
+                <input type="text" id="siswaTelegram" placeholder="Masukkan Chat ID">
+                <small style="font-size:10px; color:#64748b; display:block; margin-top:5px;">
+                    <i class="fas fa-info-circle"></i> Disarankan mengirim link form ini ke orangtua. 
+                    <span id="copyPanduanLink" style="color:#667eea; cursor:pointer; text-decoration:underline;">Klik Salin</span>
+                </small>
+            </div>
+            
+            <div class="panduan-container">
+                <div class="panduan-link" onclick="togglePanduanTelegram()">
+                    <i class="fas fa-graduation-cap"></i> Lihat Panduan Mendapatkan Chat ID Telegram
+                </div>
+                <div id="panduanTelegram" style="display: none;">
+                    <div class="panduan-gambar">
+                        <div class="card-panduan">
+                            <div class="step-badge">Langkah 1</div>
+                            <img src="a111.jpg" alt="Telegram Playstore" onclick="openLightbox(this.src, this.alt)">
+                            <div class="caption">📱 Download Aplikasi Telegram dari Playstore/App Store. Lalu daftarkan akun</div>
+                        </div>
+                        <div class="card-panduan">
+                            <div class="step-badge">Langkah 2</div>
+                            <img src="a110a.JPG" alt="Search Telegram" onclick="openLightbox(this.src, this.alt)">
+                            <div class="caption">📱 Ketik di kolom pencarian: <strong>@goabsbot</strong>cari gambar profil seperti diatas</div>
+                        </div>
+                        <div class="card-panduan">
+                            <div class="step-badge">Langkah 3</div>
+                            <img src="a110b.JPG" alt="Search Telegram" onclick="openLightbox(this.src, this.alt)">
+                            <div class="caption">🤖 Klik tombol <strong>/Start</strong> untuk memulai bot, yang menghubungkan Pesan otomatis dari Guru</div>
+                        </div>
+                        <div class="card-panduan">
+                            <div class="step-badge">Langkah 4</div>
+                            <img src="a112.jpg" alt="Search Telegram" onclick="openLightbox(this.src, this.alt)">
+                            <div class="caption">🔍 Ulangi lagi di kolom pencarian, ketik: <strong>@userinfobot</strong> cari gambar profil seperti diatas</div>
+                        </div>
+                        <div class="card-panduan">
+                            <div class="step-badge">Langkah 5</div>
+                            <img src="a113.jpg" alt="Start Bot" onclick="openLightbox(this.src, this.alt)">
+                            <div class="caption">🤖 Klik tombol <strong>/Start</strong> untuk memulai bot untuk melihat ID milik Anda</div>
+                        </div>
+                        <div class="card-panduan">
+                            <div class="step-badge">Langkah 6</div>
+                            <img src="a114.jpg" alt="Chat ID" onclick="openLightbox(this.src, this.alt)">
+                            <div class="caption">📋 Copy ID angka yang muncul di <strong>@userinfobot</strong>, lalu paste ke form di atas</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeSiswaModal()">Batal</button>
+                <button class="btn-save" onclick="saveSiswa()">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal QR Options -->
+    <div id="qrOptionsModal" class="modal">
+        <div class="modal-content" style="max-width:350px">
+            <h3>Generate QR Code Siswa</h3>
+            <div class="form-group">
+                <label>Pilih Siswa</label>
+                <select id="qrSiswaSelect" style="width:100%;padding:12px;border-radius:12px;">
+                    <option value="all">📦 Semua Siswa (Download Massal ZIP)</option>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeQrOptionsModal()">Batal</button>
+                <button class="btn-save" onclick="generateAndDownloadQr()">Generate & Download</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Preview QR -->
+    <div id="qrPreviewModal" class="modal">
+        <div class="modal-content" style="max-width:600px; text-align:center">
+            <h3 id="previewTitle">QR Code Siswa</h3>
+            <div id="qrPreviewContainer" style="margin:20px 0; max-height:500px; overflow-y:auto;"></div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeQrPreviewModal()">Tutup</button>
+                <button class="btn-save" id="downloadPdfBtn" onclick="downloadCurrentQr()">Download PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Upload Foto Profil -->
+    <div id="photoUploadModal" class="modal">
+        <div class="modal-content" style="max-width:400px; text-align:center">
+            <h3><i class="fas fa-camera"></i> Upload Foto Profil</h3>
+            <div style="margin: 20px 0">
+                <div id="photoPreviewContainer">
+                    <div class="photo-preview-placeholder" id="photoPreviewPlaceholder">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <img id="photoPreview" class="photo-preview" style="display:none" alt="Preview">
+                </div>
+                <div class="form-group">
+                    <label>Pilih Foto dari Galeri</label>
+                    <input type="file" id="photoInput" accept="image/jpeg,image/png,image/jpg" onchange="previewPhoto(this)">
+                </div>
+                <div class="crop-container" id="cropContainer" style="display:none">
+                    <canvas id="cropCanvas"></canvas>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closePhotoUploadModal()">Batal</button>
+                <button class="btn-save" onclick="savePhoto()" id="savePhotoBtn" style="display:none">Simpan Foto</button>
+            </div>
+            <button class="btn-sm" style="background:#ef4444; color:white; width:100%; margin-top:12px" onclick="deletePhoto()" id="deletePhotoBtn">Hapus Foto</button>
+        </div>
+    </div>
+
+    <!-- Modal Manual Absensi (Sakit/Izin) -->
+    <div id="manualAbsensiModal" class="modal">
+        <div class="modal-content" style="max-width:400px">
+            <h3><i class="fas fa-notes-medical"></i> Tambah Absensi Manual</h3>
+            <div class="form-group">
+                <label>Pilih Siswa (Belum Absen)</label>
+                <select id="manualSiswaSelect" style="width:100%;padding:12px;border-radius:12px;border:1px solid #e2e8f0">
+                    <option value="">-- Pilih Siswa --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="manualStatus" value="Sakit" checked> <i class="fas fa-temperature-high"></i> Sakit</label>
+                    <label><input type="radio" name="manualStatus" value="Izin"> <i class="fas fa-envelope"></i> Izin</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Keterangan</label>
+                <textarea id="manualKeterangan" rows="3" style="width:100%;padding:12px;border-radius:12px;border:1px solid #e2e8f0;font-family:'Inter',sans-serif" placeholder="Contoh: Demam tinggi, Acara keluarga, dll"></textarea>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeManualAbsensiModal()">Batal</button>
+                <button class="btn-save" onclick="saveManualAbsensi()">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tambah/Edit Libur -->
+    <div id="liburModal" class="modal">
+        <div class="modal-content" style="max-width:350px">
+            <h3 id="liburModalTitle">Tambah Hari Libur</h3>
+            <input type="hidden" id="liburId">
+            <div class="form-group">
+                <label>Tanggal Libur</label>
+                <input type="date" id="liburTanggal">
+            </div>
+            <div class="form-group">
+                <label>Keterangan</label>
+                <input type="text" id="liburKeterangan" placeholder="Contoh: Libur Nasional, Libur Sekolah, dll">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeLiburModal()">Batal</button>
+                <button class="btn-save" onclick="saveLibur()">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cetak Laporan -->
+    <div id="cetakModal" class="modal">
+        <div class="modal-content" style="max-width:450px">
+            <h3><i class="fas fa-print"></i> Cetak Laporan Absensi</h3>
+            <div class="form-group">
+                <label>Jenis Laporan</label>
+                <select id="cetakJenis" onchange="updateCetakFilter()">
+                    <option value="harian">Harian (per tanggal)</option>
+                    <option value="mingguan">Mingguan (per mapel)</option>
+                    <option value="bulanan">Bulanan (rekap per mapel)</option>
+                    <option value="semester">Semester (rekap per mapel)</option>
+                </select>
+            </div>
+            <div id="cetakFilterContainer"></div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeCetakModal()">Batal</button>
+                <button class="btn-save" onclick="generateLaporan()">Cetak PDF</button>
+                <button class="btn-save" style="background:#22c55e" onclick="generateLaporanCSV()">Export CSV</button>
+            </div>
+            <div id="cetakSpinner" class="spinner" style="margin: 20px auto; display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Modal Broadcast Pesan -->
+    <div id="broadcastModal" class="modal">
+        <div class="modal-content" style="max-width:450px">
+            <h3><i class="fab fa-telegram"></i> Kirim Pesan ke Orangtua Siswa</h3>
+            <div class="warning-text">
+                <i class="fas fa-info-circle"></i> Pesan akan dikirim ke semua orangtua siswa yang memiliki Chat ID Telegram.
+            </div>
+            <div class="form-group">
+                <label>Judul Pesan</label>
+                <input type="text" id="broadcastTitle" placeholder="Contoh: Pemberitahuan Orangtua/Wali" style="width:100%;padding:12px;border-radius:12px;border:1px solid #e2e8f0">
+            </div>
+            <div class="form-group">
+                <label>Isi Pesan</label>
+                <textarea id="broadcastMessage" rows="5" placeholder="Tulis pesan yang ingin disampaikan ke orangtua siswa..." style="width:100%;padding:12px;border-radius:12px;border:1px solid #e2e8f0;font-family:'Inter',sans-serif"></textarea>
+            </div>
+            <div id="broadcastPreview" class="broadcast-preview" style="display:none"></div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeBroadcastModal()">Batal</button>
+                <button class="btn-save" onclick="sendBroadcastMessage()" id="sendBroadcastBtn">
+                    <i class="fab fa-telegram"></i> Kirim Pesan
+                </button>
+            </div>
+            <div id="broadcastProgress" style="display:none; margin-top:12px; text-align:center">
+                <div class="spinner" style="width:30px;height:30px"></div>
+                <p style="font-size:12px; color:#64748b; margin-top:8px">Mengirim pesan...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Info Notifikasi -->
+    <div id="infoModal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width:350px; text-align:center;">
+            <h3 id="infoModalTitle">Informasi</h3>
+            <p id="infoModalMessage" style="margin:16px 0; font-size:14px;"></p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button id="infoModalOkBtn" class="btn-save" onclick="closeInfoModal()" style="background:#667eea;">OK</button>
+                <button id="infoModalWaBtn" class="btn-save" style="background:#25D366; display:none;">
+                    <i class="fab fa-whatsapp"></i> Bagikan ke WhatsApp
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox untuk preview gambar -->
+    <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+        <div class="close-lightbox" onclick="closeLightbox()">&times;</div>
+        <img id="lightboxImg" src="" alt="Preview" onclick="toggleZoom(event)">
+        <div id="lightboxCaption" class="caption-lightbox"></div>
+        <div class="zoom-info">💡 Klik gambar untuk zoom / pinch to zoom</div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <!-- Audio Feedback -->
+    <audio id="audioSuccess" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+    <audio id="audioError" src="https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3" preload="auto"></audio>
+
+    <!-- Hanya 1 file JS! -->
+<script src="js/app.bundle.min.js"></script>
+</body>
+</html>
