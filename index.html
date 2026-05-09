@@ -450,6 +450,212 @@
 </div>
 
 <script>
+
+document.addEventListener('copy', function(e) {
+    alert('Copy tidak diizinkan');
+    e.preventDefault();
+});
+
+
+(function() {
+        // Method 1: Deteksi resize window (DevTools dibuka)
+        function detectDevTools() {
+            const threshold = 160;
+            const widthDiff = window.outerWidth - window.innerWidth > threshold;
+            const heightDiff = window.outerHeight - window.innerHeight > threshold;
+            
+            if (widthDiff || heightDiff) {
+                showConsoleWarning();
+            }
+        }
+        
+        
+        // Method 3: Deteksi Firebug
+        function detectFirebug() {
+            if (window.console && (console.firebug || console.exception)) {
+                showConsoleWarning();
+            }
+        }
+        
+        // Method 4: Deteksi via console.log override
+        function showConsoleWarning() {
+            const warningStyles = [
+                'font-size: 20px',
+                'font-weight: bold',
+                'color: #ef4444',
+                'background: #1e1e1e',
+                'padding: 20px',
+                'border: 2px solid #ef4444',
+                'border-radius: 8px',
+                'text-shadow: 0 0 5px rgba(239,68,68,0.5)'
+            ].join(';');
+            
+            console.clear();
+            console.log('%c⚠️ PERINGATAN KEAMANAN! ⚠️', warningStyles);
+            console.log('%c', 'font-size: 14px; color: #fbbf24;');
+            console.log('%c🚫 Developer Tools terdeteksi!', 'font-size: 16px; color: #ef4444; font-weight: bold;');
+            console.log('%c', 'font-size: 14px; color: #94a3b8;');
+            console.log('%c', 'font-size: 14px; color: #94a3b8;');
+            console.log('%c🔒 Aplikasi ini dilindungi oleh GoAbs Security System', 'font-size: 12px; color: #667eea;');
+            console.log('%c📧 Laporkan aktivitas mencurigakan ke: admin@goabs.id', 'font-size: 12px; color: #667eea;');
+            console.log('%c', 'font-size: 14px; color: #94a3b8;');
+        }
+        
+        // Method 5: Override console methods (opsional - lebih agresif)
+        function protectConsole() {
+            const originalConsole = {
+                log: console.log,
+                warn: console.warn,
+                error: console.error,
+                info: console.info,
+                debug: console.debug,
+                table: console.table,
+                trace: console.trace
+            };
+        }
+        
+        // Method 6: Deteksi object console yang tidak standar
+        function detectConsoleOpen() {
+            const element = new Image();
+            Object.defineProperty(element, 'id', {
+                get: function() {
+                    showConsoleWarning();
+                    return '';
+                }
+            });
+            console.log('%c', element);
+        }
+        
+        // Method 7: Deteksi via window resize berulang
+        let resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                detectDevTools();
+            }, 100);
+        });
+        
+        // Method 8: Deteksi via mousemove (DevTools biasanya di kanan/bawah)
+        window.addEventListener('mousemove', function(e) {
+            if (e.clientX > window.innerWidth - 100 || e.clientY > window.innerHeight - 100) {
+                // Mouse di area yang mencurigakan
+            }
+        });
+        
+        // Method 9: Deteksi shortcut keyboard (F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U)
+        document.addEventListener('keydown', function(e) {
+            // F12
+            if (e.keyCode === 123) {
+                e.preventDefault();
+                showConsoleWarning();
+                return false;
+            }
+            
+            // Ctrl+Shift+I (Windows/Linux) atau Cmd+Option+I (Mac)
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) {
+                e.preventDefault();
+                showConsoleWarning();
+                return false;
+            }
+            
+            // Ctrl+U (View Source)
+            if ((e.ctrlKey || e.metaKey) && e.keyCode === 85) {
+                e.preventDefault();
+                showConsoleWarning();
+                return false;
+            }
+            
+            // Ctrl+Shift+C (Inspect Element)
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.keyCode === 67) {
+                e.preventDefault();
+                showConsoleWarning();
+                return false;
+            }
+        });
+        
+        // Blokir klik kanan
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // Jalankan deteksi secara periodik
+        setInterval(function() {
+            detectDevTools();
+        }, 1000);
+        
+        // Jalankan saat halaman load
+        window.addEventListener('load', function() {
+            detectDevTools();
+            protectConsole();
+            
+            // Tampilkan pesan normal di console (untuk developer yang sah)
+            console.log('%c✅ GoAbs - Sistem Absensi Digital', 'font-size: 16px; color: #667eea; font-weight: bold;');
+            console.log('%c🚀 Aplikasi berjalan normal', 'font-size: 14px; color: #22c55e;');
+        });
+        
+        // Cegah select text
+        document.addEventListener('selectstart', function(e) {
+            e.preventDefault();
+        });
+        
+        // Deteksi jika user mencoba inspect element via context menu
+        window.addEventListener('beforeunload', function() {
+            // Cleanup
+        });
+        
+    })();
+
+    // ====== HARD BLOCK DEVTOOLS ======
+    function blockUserAccess() {
+        if (document.getElementById('blocked')) return;
+
+        const div = document.createElement('div');
+        div.id = 'blocked';
+        div.style.cssText = `
+            position:fixed;
+            inset:0;
+            background:#020617;
+            color:#ef4444;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            z-index:999999;
+        `;
+        div.innerHTML = '⚠️ Developer Tools terdeteksi';
+
+        document.body.appendChild(div);
+    }
+
+// Deteksi DevTools lebih sensitif
+function isDevToolsOpen() {
+    const threshold = 150;
+    return (
+        window.outerWidth - window.innerWidth > threshold ||
+        window.outerHeight - window.innerHeight > threshold
+    );
+}
+
+// Loop monitoring
+setInterval(() => {
+    if (isDevToolsOpen()) {
+        blockUserAccess();
+    }
+}, 800);
+
+
+// Proteksi tambahan: blur jika tab tidak aktif (indikasi inspect)
+document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+        document.body.style.filter = "blur(8px)";
+    } else {
+        document.body.style.filter = "none";
+    }
+});
+
+
+
+    
     // GANTI DENGAN URL DEPLOY APPS SCRIPT ANDA YANG SUDAH BERHASIL
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCbCUzowT1_1gohZGrw3Snyn9DLmYswkha1-nbvgLGj7UL7ojLgGO5u3HwSNOoHM-ACg/exec';
 
